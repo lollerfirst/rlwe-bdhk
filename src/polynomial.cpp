@@ -89,13 +89,18 @@ Polynomial Polynomial::operator*(const Polynomial& other) const {
     Logger::log("Intermediate multiplication result:\n  " + 
                 Logger::vectorToString(temp, "  temp = "));
 
-    // Reduce modulo x^(2n) + 1
+    // Reduce modulo x^n + 1
     Polynomial result(ring_dim, modulus);
     for (size_t i = 0; i < ring_dim; i++) {
+        // Start with the regular coefficient
         result[i] = temp[i];
-        if (i + ring_dim < 2 * ring_dim) {
+        
+        // Subtract corresponding coefficient from higher degree when reducing mod x^n + 1
+        size_t higher_degree = i + ring_dim;
+        while (higher_degree < temp.size()) {
             result[i] = mod(static_cast<int64_t>(result[i]) - 
-                          static_cast<int64_t>(temp[i + ring_dim]), modulus);
+                          static_cast<int64_t>(temp[higher_degree]), modulus);
+            higher_degree += ring_dim;
         }
     }
 

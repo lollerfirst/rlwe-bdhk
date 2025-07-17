@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
-#include "logging.h"
+#include <logging.h>
 
 class Polynomial {
 public:
@@ -85,6 +85,30 @@ public:
         ss << "Polynomial(dim=" << ring_dim << ", q=" << modulus << "): ";
         ss << Logger::vectorToString(coeffs);
         return ss.str();
+    }
+
+    // Convert polynomial to bytes
+    std::vector<uint8_t> toBytes() const {
+        std::vector<uint8_t> bytes;
+        
+        // Reserve space for metadata + coefficients
+        bytes.reserve(2 * sizeof(uint64_t) + coeffs.size() * sizeof(uint64_t));
+        
+        // Add ring dimension
+        const uint8_t* dim_bytes = reinterpret_cast<const uint8_t*>(&ring_dim);
+        bytes.insert(bytes.end(), dim_bytes, dim_bytes + sizeof(size_t));
+        
+        // Add modulus
+        const uint8_t* mod_bytes = reinterpret_cast<const uint8_t*>(&modulus);
+        bytes.insert(bytes.end(), mod_bytes, mod_bytes + sizeof(uint64_t));
+        
+        // Add coefficients
+        for (const uint64_t& coeff : coeffs) {
+            const uint8_t* coeff_bytes = reinterpret_cast<const uint8_t*>(&coeff);
+            bytes.insert(bytes.end(), coeff_bytes, coeff_bytes + sizeof(uint64_t));
+        }
+        
+        return bytes;
     }
 
 private:

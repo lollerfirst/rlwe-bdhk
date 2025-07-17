@@ -25,6 +25,7 @@ option(BUILD_TESTS "Build test suite" ON)
 
 # Find required packages
 find_package(OpenMP REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Add subdirectories
 add_subdirectory(src)
