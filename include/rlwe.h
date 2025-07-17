@@ -1,38 +1,58 @@
 #ifndef RLWE_H
 #define RLWE_H
 
+#include "polynomial.h"
 #include <vector>
 #include <random>
 #include <cstdint>
+#include <memory>
 
-// Polynomial ring operations in Z[x]/(x^(2n) + 1)
 class RLWESignature {
 public:
+    // Initialize with ring dimension n (degree will be 2n) and modulus q
     RLWESignature(size_t n, uint64_t q);
     
-    // Key generation
+    // Generate keys: (a, b = a*s + e) as public key, s as private key
     void generateKeys();
     
-    // Signature operations
-    std::vector<uint64_t> sign(const std::vector<uint8_t>& message);
-    bool verify(const std::vector<uint8_t>& message, const std::vector<uint64_t>& signature);
+    // Sign a message
+    std::pair<Polynomial, Polynomial> sign(const std::vector<uint8_t>& message);
+    
+    // Verify a signature
+    bool verify(const std::vector<uint8_t>& message, 
+               const std::pair<Polynomial, Polynomial>& signature);
+
+    // Get public key
+    std::pair<Polynomial, Polynomial> getPublicKey() const {
+        return std::make_pair(a, b);
+    }
 
 private:
-    // Ring dimension (n)
-    size_t ring_dim;
-    // Modulus (q)
+    // Ring dimension (polynomial degree will be 2n)
+    size_t ring_dim_n;
+    // Modulus
     uint64_t modulus;
     
-    // Key material
-    std::vector<uint64_t> a;     // Public random polynomial
-    std::vector<uint64_t> b;     // Public key component (a*s + e)
-    std::vector<uint64_t> s;     // Secret key
+    // Random number generation
+    std::mt19937_64 rng;
+    
+    // Public key components
+    Polynomial a;  // Random polynomial
+    Polynomial b;  // a*s + e
+    
+    // Private key
+    Polynomial s;  // Secret key
     
     // Helper functions
-    std::vector<uint64_t> sampleUniform();
-    std::vector<uint64_t> sampleGaussian(double stddev);
-    std::vector<uint64_t> polynomialMul(const std::vector<uint64_t>& p1, 
-                                       const std::vector<uint64_t>& p2);
+    Polynomial sampleUniform();
+    Polynomial sampleGaussian(double stddev);
+    
+    // Convert message to polynomial
+    Polynomial messageToPolynomial(const std::vector<uint8_t>& message);
+    
+    // Parameters for Gaussian distribution
+    static constexpr double GAUSSIAN_STDDEV = 3.0;
+    static constexpr double SIGNATURE_STDDEV = 3.0;
 };
 
 #endif // RLWE_H
