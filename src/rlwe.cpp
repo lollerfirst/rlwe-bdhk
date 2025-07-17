@@ -1,11 +1,10 @@
-#include "polynomial.h"
+#include <polynomial.h>
 #include <rlwe.h>
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
 #include <limits>
 #include <random>
-#include <sstream>
 #include <sha256.h>
 
 static void getSecureRandomBytes(uint8_t* buffer, size_t length) {
@@ -54,7 +53,6 @@ RLWESignature::RLWESignature(size_t n, uint64_t q)
 
 void RLWESignature::generateKeys() {
     Logger::log("\nGenerating keys...");
-    
     Logger::log("Sampling uniform polynomial a");
     a = sampleUniform();
     
@@ -67,43 +65,65 @@ void RLWESignature::generateKeys() {
     Logger::log("Computing b = a*s + e");
     b = a * s + e;
     
-    Logger::log("Key generation complete");
+    Logger::log("Public key a: " + a.toString());
+    Logger::log("Public key b: " + b.toString());  
+    Logger::log("Secret key s: " + s.toString());
+}
+
+std::pair<Polynomial, Polynomial> RLWESignature::computeBlindedMessage(const std::vector<uint8_t>& secret) {
+    Logger::log("\nComputing blinded message...");
+    
+    // Sample random blinding factor
+    Polynomial r = sampleUniform();
+    Logger::log("Random blinding factor r: " + r.toString());
+    
+    // Hash secret to polynomial
+    Polynomial Y = hashToPolynomial(secret);
+    Logger::log("Hashed secret Y: " + Y.toString());
+    
+    // Compute blinded message: Y + a*r
+    Polynomial ar = a * r;
+    Logger::log("a*r: " + ar.toString());
+    
+    Polynomial blindedMessage = Y + ar;
+    Logger::log("Blinded message (Y + a*r): " + blindedMessage.toString());
+    
+    return std::make_pair(blindedMessage, r);
 }
 
 Polynomial RLWESignature::blindSign(const Polynomial& blindedMessagePoly) {
-    const Polynomial& z = blindedMessagePoly; 
-    Polynomial e1 = sampleGaussian(GAUSSIAN_STDDEV);
-    Polynomial u = s * z + e1;
+    Logger::log("\nPerforming blind signing...");
+    Logger::log("Blinded message received: " + blindedMessagePoly.toString());
     
-    return u;
+    Polynomial e1 = sampleGaussian(GAUSSIAN_STDDEV);
+
+    // Compute signature: s * blinded_message
+    Polynomial signature = s * blindedMessagePoly + e1;
+    Logger::log("Computed blind signature (s * blinded_message): " + signature.toString());
+    
+    return signature;
 }
 
 bool RLWESignature::verify(const std::vector<uint8_t>& message,
                           const Polynomial& signature) {
+    Logger::log("\nVerifying signature...");
     logMessageBytes("Message", message);
+    Logger::log("Signature to verify: " + signature.toString());
     
-    const auto& u = signature;
-    Logger::log("Signature:\n  u: " + u.toString());
-    
-    Logger::log("Hashing secret to polynomial");
+    // Hash message to polynomial
     Polynomial z = hashToPolynomial(message);
-    Logger::log("Message polynomial z: " + z.toString());
+    Logger::log("Hashed message z: " + z.toString());
     
-    Logger::log("Computing c = s * z");
-    Polynomial c = s * z;
-    Logger::log("c (before rounding): " + c.toString());
-    
-    uint64_t q_half = modulus / 2;
-    Logger::log("Computing expected = floor(q/2)*z with q/2 = " + std::to_string(q_half));
-    Polynomial expected = z * q_half;
-    Logger::log("Expected (before rounding): " + expected.toString());
+    // Expected value: b * z
+    Polynomial expected = b * z;
+    Logger::log("Expected value (b*z): " + expected.toString());
 
     // Round both polynomials to binary signals (0 or q/2)
-    Polynomial actual_signal = c.polySignal();
-    Polynomial expected_signal = u.polySignal();
+    Polynomial actual_signal = signature.polySignal();
+    Polynomial expected_signal = expected.polySignal();
     
-    Logger::log("Actual (after rounding): " + actual_signal.toString());
-    Logger::log("Expected (after rounding): " + expected_signal.toString());
+    Logger::log("Rounded signature: " + actual_signal.toString());
+    Logger::log("Rounded expected: " + expected_signal.toString());
 
     // Compare the coefficients
     const auto& actual_coeffs = actual_signal.getCoeffs();
@@ -120,14 +140,8 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
         }
     }
     
-    Logger::log("Verification result: " + std::string(result ? "true" : "false"));
+    Logger::log("Verification result: " + std::string(result ? "SUCCESS" : "FAILED"));
     return result;
-}
-
-std::pair<Polynomial, Polynomial> RLWESignature::computeBlindedMessage(const std::vector<uint8_t>& secret) {
-    Polynomial r = sampleUniform();
-    Polynomial Y = hashToPolynomial(secret);
-    return std::make_pair(Y + r, r);
 }
 
 Polynomial RLWESignature::computeSignature(
@@ -171,17 +185,6 @@ Polynomial RLWESignature::sampleGaussian(double stddev) {
 Polynomial RLWESignature::messageToPolynomial(const std::vector<uint8_t>& message) {
     std::vector<uint64_t> coeffs(ring_dim_n, 0);
     
-    // Print debug info about message bits
-    Logger::log("Message bits:");
-    for (size_t byte_idx = 0; byte_idx < message.size(); byte_idx++) {
-        std::stringstream ss;
-        ss << "Byte " << byte_idx << ": ";
-        for (int j = 7; j >= 0; j--) {
-            ss << ((message[byte_idx] >> j) & 1);
-        }
-        Logger::log(ss.str());
-    }
-    
     // Process each byte separately, starting from most significant bit
     size_t coeff_idx = 0;
     for (size_t byte_idx = 0; byte_idx < message.size() && coeff_idx < ring_dim_n; byte_idx++) {
@@ -191,19 +194,17 @@ Polynomial RLWESignature::messageToPolynomial(const std::vector<uint8_t>& messag
             coeffs[coeff_idx++] = (byte >> j) & 1;
         }
     }
-    
-    // Print encoded coefficients
-    Logger::log("Encoded coefficients: " + Logger::vectorToString(coeffs));
-    
+        
     return Polynomial(coeffs, modulus);
 }
 
 Polynomial RLWESignature::hashToPolynomial(const std::vector<uint8_t>& message) {
+    Logger::log("\nConverting message to polynomial using counter-based hashing");
+    logMessageBytes("Input message", message);
+    
     // Create a polynomial to hold the result
     std::vector<uint64_t> coeffs(ring_dim_n, 0);
-    
-    Logger::log("Converting message to polynomial using counter-based hashing");
-    
+        
     // Process message in blocks using counter
     size_t coeff_idx = 0;
     uint32_t counter = 0;
@@ -220,10 +221,18 @@ Polynomial RLWESignature::hashToPolynomial(const std::vector<uint8_t>& message) 
         // Add original message
         block.insert(block.end(), message.begin(), message.end());
         
+        Logger::log("Block " + std::to_string(counter) + " content:");
+        logMessageBytes("  ", block);
+        
         // Hash the block
         std::vector<uint8_t> hash = SHA256::hash(block);
-        Logger::log("Block " + std::to_string(counter) + " hash: " + Logger::vectorToString(hash));
-        
+        std::stringstream ss;
+        ss << "Block " << counter << " hash: ";
+        for (uint8_t b : hash) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+        }
+        Logger::log(ss.str());
+
         // Convert hash bits to coefficients
         for (size_t byte_idx = 0; coeff_idx < ring_dim_n && byte_idx < hash.size(); byte_idx++) {
             for (int bit = 7; bit >= 0 && coeff_idx < ring_dim_n; bit--) {
@@ -235,6 +244,13 @@ Polynomial RLWESignature::hashToPolynomial(const std::vector<uint8_t>& message) 
         counter++;
     }
     
-    Logger::log("Final polynomial coefficients: " + Logger::vectorToString(coeffs));
+    Logger::log("Final polynomial coefficients:");
+    std::stringstream result_ss;
+    for (size_t i = 0; i < coeffs.size(); i++) {
+        if (i > 0) result_ss << ", ";
+        result_ss << coeffs[i];
+    }
+    Logger::log(result_ss.str());
+    
     return Polynomial(coeffs, modulus);
 }
