@@ -1,6 +1,7 @@
 # Create the library
 add_library(rlwe
     rlwe.cpp
+    polynomial.cpp
 )
 
 # Add include directories
@@ -13,6 +14,3 @@ target_include_directories(rlwe
 
 # Link with OpenMP
 target_link_libraries(rlwe PRIVATE OpenMP::OpenMP_CXX)
-
-# Create an empty source file for now
-file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/rlwe.cpp "")
