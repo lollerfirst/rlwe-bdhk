@@ -74,18 +74,15 @@ std::pair<Polynomial, Polynomial> RLWESignature::computeBlindedMessage(const std
     Logger::log("\nComputing blinded message...");
     
     // Sample random blinding factor
-    Polynomial r = sampleUniform();
+    Polynomial r = sampleGaussian(GAUSSIAN_STDDEV);
     Logger::log("Random blinding factor r: " + r.toString());
     
     // Hash secret to polynomial
     Polynomial Y = hashToPolynomial(secret);
     Logger::log("Hashed secret Y: " + Y.toString());
     
-    // Compute blinded message: Y + a*r
-    Polynomial ar = a * r;
-    Logger::log("a*r: " + ar.toString());
-    
-    Polynomial blindedMessage = Y + ar;
+    // Compute blinded message: Y + a*r    
+    Polynomial blindedMessage = Y + a * r;
     Logger::log("Blinded message (Y + a*r): " + blindedMessage.toString());
     
     return std::make_pair(blindedMessage, r);
@@ -114,9 +111,9 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
     Polynomial z = hashToPolynomial(message);
     Logger::log("Hashed message z: " + z.toString());
     
-    // Expected value: b * z
-    Polynomial expected = b * z;
-    Logger::log("Expected value (b*z): " + expected.toString());
+    // Expected value: s * z
+    Polynomial expected = s * z;
+    Logger::log("Expected value (s*z): " + expected.toString());
 
     // Round both polynomials to binary signals (0 or q/2)
     Polynomial actual_signal = signature.polySignal();

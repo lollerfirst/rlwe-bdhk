@@ -44,7 +44,7 @@ private:
     Polynomial messageToPolynomial(const std::vector<uint8_t>& message);
     
     // Reduced standard deviation for better sensitivity
-    static constexpr double GAUSSIAN_STDDEV = 3.0;     // Small standard deviation for cleaner signals
+    static constexpr double GAUSSIAN_STDDEV = 1.0;     // Small standard deviation for cleaner signals
     
     // Verification parameters
     static constexpr double LARGE_THRESHOLD_DIVISOR = 4.0;   // For values near q/2
