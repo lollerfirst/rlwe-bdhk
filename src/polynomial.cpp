@@ -1,4 +1,4 @@
-#include "polynomial.h"
+#include <polynomial.h>
 #include <algorithm>
 #include <stdexcept>
 

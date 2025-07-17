@@ -1,8 +1,13 @@
 *.o
 *.out
-.vscode/
+.vscode/*
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea/
 *.pyc
 __pycache__/
 bin/
 build/
+compile_commands.json

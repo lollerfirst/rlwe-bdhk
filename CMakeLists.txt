@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
+
+# Enable compile commands export for IDE support
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 project(rlwe-signature 
         VERSION 0.1.0
         DESCRIPTION "RLWE Signature Scheme Implementation"
@@ -29,4 +33,12 @@ add_subdirectory(src)
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+# Create symbolic link to compile_commands.json in source directory
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/compile_commands.json
+    )
 endif()
