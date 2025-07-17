@@ -1,18 +1,55 @@
-#include <rlwe.h>
-#include <chrono>
+#include "rlwe.h"
 #include <cmath>
+#include <stdexcept>
+#include <limits>
+#include <random>
+
+// Helper function to get secure random bytes
+static void getSecureRandomBytes(uint8_t* buffer, size_t length) {
+    std::random_device rd("/dev/urandom");
+    if (!rd.entropy()) {
+        throw std::runtime_error("Failed to access secure random source");
+    }
+    
+    // Fill buffer with random bytes
+    for (size_t i = 0; i < length; i += sizeof(uint32_t)) {
+        uint32_t random = rd();
+        size_t remaining = std::min(sizeof(uint32_t), length - i);
+        std::memcpy(buffer + i, &random, remaining);
+    }
+}
+
+uint64_t RLWESignature::getRandomUint64() {
+    uint64_t result;
+    getSecureRandomBytes(reinterpret_cast<uint8_t*>(&result), sizeof(result));
+    return result;
+}
+
+// Box-Muller transform for Gaussian sampling using secure random source
+double RLWESignature::getRandomDouble() {
+    // Get two uniform random values between 0 and 1
+    uint64_t r1, r2;
+    getSecureRandomBytes(reinterpret_cast<uint8_t*>(&r1), sizeof(r1));
+    getSecureRandomBytes(reinterpret_cast<uint8_t*>(&r2), sizeof(r2));
+    
+    // Convert to [0,1) range
+    double u1 = static_cast<double>(r1) / std::numeric_limits<uint64_t>::max();
+    double u2 = static_cast<double>(r2) / std::numeric_limits<uint64_t>::max();
+    
+    // Box-Muller transform
+    double radius = std::sqrt(-2 * std::log(u1));
+    double theta = 2 * M_PI * u2;
+    
+    return radius * std::cos(theta);
+}
 
 RLWESignature::RLWESignature(size_t n, uint64_t q)
     : ring_dim_n(n),
       modulus(q),
-      // Initialize polynomials with degree 2n
       a(2*n, q),
       b(2*n, q),
       s(2*n, q)
 {
-    // Seed RNG with current time
-    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    rng.seed(seed);
 }
 
 void RLWESignature::generateKeys() {
@@ -83,23 +120,22 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
 }
 
 Polynomial RLWESignature::sampleUniform() {
-    std::uniform_int_distribution<uint64_t> dist(0, modulus - 1);
     Polynomial result(2 * ring_dim_n, modulus);
     
     for (size_t i = 0; i < 2 * ring_dim_n; i++) {
-        result[i] = dist(rng);
+        // Generate random value and reduce modulo q
+        result[i] = getRandomUint64() % modulus;
     }
     
     return result;
 }
 
 Polynomial RLWESignature::sampleGaussian(double stddev) {
-    std::normal_distribution<double> dist(0.0, stddev);
     Polynomial result(2 * ring_dim_n, modulus);
     
     for (size_t i = 0; i < 2 * ring_dim_n; i++) {
-        // Sample from Gaussian and round to nearest integer
-        double sample = dist(rng);
+        // Sample from Gaussian using Box-Muller transform
+        double sample = getRandomDouble() * stddev;
         int64_t rounded = static_cast<int64_t>(std::round(sample));
         
         // Convert to positive modulus if negative

@@ -6,6 +6,7 @@
 #include <random>
 #include <cstdint>
 #include <memory>
+#include <array>
 
 class RLWESignature {
 public:
@@ -33,9 +34,6 @@ private:
     // Modulus
     uint64_t modulus;
     
-    // Random number generation
-    std::mt19937_64 rng;
-    
     // Public key components
     Polynomial a;  // Random polynomial
     Polynomial b;  // a*s + e
@@ -49,6 +47,10 @@ private:
     
     // Convert message to polynomial
     Polynomial messageToPolynomial(const std::vector<uint8_t>& message);
+
+    // CSPRNG helper functions
+    uint64_t getRandomUint64();
+    double getRandomDouble(); // For Gaussian sampling
     
     // Parameters for Gaussian distribution
     static constexpr double GAUSSIAN_STDDEV = 3.0;
