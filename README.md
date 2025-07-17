@@ -16,7 +16,7 @@ The blind exchange protocol works in the polynomial ring $R = Z[x]/(x^n + 1)$ an
     
 - **Point Addition → Polynomial Addition**
   - ECC point addition is replaced by simple polynomial addition in the ring
-  - Operations are performed modulo both the ring polynomial (x^(2n) + 1) and a prime modulus q
+  - Operations are performed modulo both the ring polynomial $(x^n + 1)$ and a prime modulus q
 
 ### Key Function Replacements
 
