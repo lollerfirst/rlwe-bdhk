@@ -4,7 +4,7 @@ This project implements a Ring Learning With Errors (RLWE) based blind exchange 
 
 ## Overview
 
-The blind exchange protocol works in the polynomial ring R = Z[x]/(x^(2n) + 1) and replaces key Cashu operations with RLWE equivalents:
+The blind exchange protocol works in the polynomial ring $R = Z[x]/(x^(2n) + 1)$ and replaces key Cashu operations with RLWE equivalents:
 
 ### Key Transformations
 
