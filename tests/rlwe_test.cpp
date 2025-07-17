@@ -23,6 +23,26 @@ protected:
     std::unique_ptr<RLWESignature> rlwe;
 };
 
+// New test class for larger polynomial degree
+class RLWELargeTest : public ::testing::Test {
+protected:
+    const size_t n = 32;       // Larger ring dimension
+    const uint64_t q = 7681;   // Same modulus for comparison
+    
+    void SetUp() override {
+        rlwe = std::make_unique<RLWESignature>(n, q);
+        Logger::setOutputStream(std::cout);
+        Logger::enable_logging = true;
+        Logger::log("Large polynomial test setup with n=" + std::to_string(n) + ", q=" + std::to_string(q));
+    }
+    
+    void TearDown() override {
+        Logger::log("Large polynomial test complete\n");
+    }
+    
+    std::unique_ptr<RLWESignature> rlwe;
+};
+
 TEST_F(RLWETest, KeyGeneration) {
     Logger::log("\n=== Starting Key Generation Test ===");
     
@@ -89,6 +109,61 @@ TEST_F(RLWETest, CompleteBlindSignatureFlow) {
     bool wrong_verify = rlwe->verify(wrong_secret, signature);
     Logger::log("Wrong secret verification result: " + std::string(wrong_verify ? "INCORRECTLY SUCCEEDED" : "CORRECTLY FAILED"));
     EXPECT_FALSE(wrong_verify) << "Signature incorrectly verified with wrong secret";
+}
+
+TEST_F(RLWELargeTest, CompleteBlindSignatureFlowLarge) {
+    Logger::log("\n=== Starting Complete Blind Signature Flow Test with n=32 ===");
+    
+    // 1. Server setup
+    Logger::log("\n1. Server Setup (n=32)");
+    rlwe->generateKeys();
+    auto [a, b] = rlwe->getPublicKey();
+    Logger::log("Server public key a: " + a.toString());
+    Logger::log("Server public key b: " + b.toString());
+    
+    // 2. Client: Create secret and blind it
+    Logger::log("\n2. Client: Blinding Process");
+    // Using a larger secret for the larger polynomial
+    std::vector<uint8_t> secret = {0x12, 0x34, 0x56, 0x78};
+    Logger::log("Client secret: 0x12345678");
+    
+    Logger::log("Computing blinded message...");
+    auto [blindedMessage, blindingFactor] = rlwe->computeBlindedMessage(secret);
+    Logger::log("Blinded message: " + blindedMessage.toString());
+    Logger::log("Blinding factor: " + blindingFactor.toString());
+    
+    // 3. Server: Generate blind signature
+    Logger::log("\n3. Server: Blind Signing");
+    Logger::log("Server generating blind signature...");
+    Polynomial blindSignature = rlwe->blindSign(blindedMessage);
+    Logger::log("Blind signature: " + blindSignature.toString());
+    
+    // 4. Client: Unblind the signature
+    Logger::log("\n4. Client: Unblinding");
+    Logger::log("Client computing final signature...");
+    Polynomial signature = rlwe->computeSignature(blindSignature, blindingFactor, b);
+    Logger::log("Final signature: " + signature.toString());
+    
+    // 5. Server: Verify the signature against a secret
+    Logger::log("\n5. Server: Verification");
+    Logger::log("Server verifying signature with original secret...");
+    bool verified = rlwe->verify(secret, signature);
+    Logger::log("Verification result: " + std::string(verified ? "SUCCESS" : "FAILED"));
+    EXPECT_TRUE(verified) << "Valid signature failed to verify";
+    
+    // 6. Verify fails with wrong secret
+    Logger::log("\n6. Testing Wrong Secret");
+    std::vector<uint8_t> wrong_secret = {0x12, 0x34, 0x56, 0x79};  // Changed last byte
+    Logger::log("Attempting verification with wrong secret: 0x12345679");
+    bool wrong_verify = rlwe->verify(wrong_secret, signature);
+    Logger::log("Wrong secret verification result: " + std::string(wrong_verify ? "INCORRECTLY SUCCEEDED" : "CORRECTLY FAILED"));
+    EXPECT_FALSE(wrong_verify) << "Signature incorrectly verified with wrong secret";
+    
+    // 7. Additional verification for polynomial degree
+    Logger::log("\n7. Verifying polynomial degrees");
+    EXPECT_EQ(blindedMessage.degree(), n) << "Blinded message has wrong degree";
+    EXPECT_EQ(blindSignature.degree(), n) << "Blind signature has wrong degree";
+    EXPECT_EQ(signature.degree(), n) << "Final signature has wrong degree";
 }
 
 TEST_F(RLWETest, HashToPolynomial) {
