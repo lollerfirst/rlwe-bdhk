@@ -105,57 +105,38 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
     Logger::log("Message polynomial z: " + z.toString());
     
     Logger::log("Computing v - u*s");
-    Polynomial result = v - u * s;
-    Logger::log("Result: " + result.toString());
+    Polynomial actual = v - u * s;
+    Logger::log("Actual (before rounding): " + actual.toString());
     
     uint64_t q_half = modulus / 2;
     Logger::log("Computing expected = floor(q/2)*z with q/2 = " + std::to_string(q_half));
     Polynomial expected = z * q_half;
-    Logger::log("Expected: " + expected.toString());
+    Logger::log("Expected (before rounding): " + expected.toString());
+
+    // Round both polynomials to binary signals (0 or q/2)
+    Polynomial actual_signal = actual.polySignal();
+    Polynomial expected_signal = expected.polySignal();
     
-    Logger::log("Using thresholds:");
-    //uint64_t small_threshold = static_cast<uint64_t>(modulus / SMALL_THRESHOLD_DIVISOR);
-    uint64_t large_threshold = static_cast<uint64_t>(modulus / LARGE_THRESHOLD_DIVISOR);
-    // Logger::log("  For values near 0: q/" + std::to_string(SMALL_THRESHOLD_DIVISOR) + 
-                //" = " + std::to_string(small_threshold));
-    Logger::log("  For values near q/2: q/" + std::to_string(LARGE_THRESHOLD_DIVISOR) + 
-                " = " + std::to_string(large_threshold));
+    Logger::log("Actual (after rounding): " + actual_signal.toString());
+    Logger::log("Expected (after rounding): " + expected_signal.toString());
+
+    // Compare the coefficients
+    const auto& actual_coeffs = actual_signal.getCoeffs();
+    const auto& expected_coeffs = expected_signal.getCoeffs();
     
-    const auto& result_coeffs = result.getCoeffs();
-    const auto& expected_coeffs = expected.getCoeffs();
-    
-    size_t significant_differences = 0;
-    
-    for (size_t i = 0; i < 2 * ring_dim_n; i++) {
-        bool is_significant = isValueSignificantlyDifferent(result_coeffs[i], expected_coeffs[i]);
-        
-        // Detailed logging for better debugging
-        std::string significance = expected_coeffs[i] == 0 ? 
-            "near 0" : "near q/2";
-        uint64_t dist = getCyclicDistance(result_coeffs[i], expected_coeffs[i]);
-        uint64_t used_threshold = large_threshold;
-        
-        Logger::log(std::string("Coefficient ") + std::to_string(i) + 
-                   ": result=" + std::to_string(result_coeffs[i]) +
-                   ", expected=" + std::to_string(expected_coeffs[i]) +
-                   " (" + significance + ")" +
-                   ", distance=" + std::to_string(dist) +
-                   ", threshold=" + std::to_string(used_threshold) +
-                   ", significant=" + (is_significant ? "true" : "false"));
-        
-        if (is_significant) {
-            Logger::log("Significant difference found at index " + std::to_string(i));
-            significant_differences++;
+    bool result = true;
+    for (size_t i = 0; i < actual_coeffs.size(); i++) {
+        if (actual_coeffs[i] != expected_coeffs[i]) {
+            Logger::log("Mismatch at coefficient " + std::to_string(i) + 
+                       ": actual=" + std::to_string(actual_coeffs[i]) + 
+                       ", expected=" + std::to_string(expected_coeffs[i]));
+            result = false;
+            break;
         }
     }
     
-    bool valid = significant_differences < MIN_DIFFERENT_COEFFS;
-    Logger::log("Found " + std::to_string(significant_differences) + 
-                " significant differences");
-    Logger::log("Minimum differences for invalid signature: " + 
-                std::to_string(MIN_DIFFERENT_COEFFS));
-    Logger::log("Verification result: " + std::string(valid ? "valid" : "invalid"));
-    return valid;
+    Logger::log("Verification result: " + std::string(result ? "true" : "false"));
+    return result;
 }
 
 Polynomial RLWESignature::sampleUniform() {

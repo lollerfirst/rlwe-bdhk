@@ -63,6 +63,9 @@ public:
         return coeffs;
     }
 
+    // Round coefficients to either 0 or q/2 (whichever is closer)
+    Polynomial polySignal() const;
+
     // Set polynomial coefficients
     void setCoefficients(const std::vector<uint64_t>& new_coeffs) {
         if (new_coeffs.size() != ring_dim) {

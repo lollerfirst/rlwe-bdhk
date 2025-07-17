@@ -1,6 +1,27 @@
 #include <polynomial.h>
 #include <stdexcept>
 
+// Implementation of polySignal
+Polynomial Polynomial::polySignal() const {
+    Polynomial result(ring_dim, modulus);
+    uint64_t half_mod = modulus / 2;
+    
+    for (size_t i = 0; i < ring_dim; i++) {
+        uint64_t coeff = coeffs[i];
+        // Determine if coefficient is closer to 0 or q/2 in cyclic group
+        uint64_t dist_to_zero = std::min(coeff, modulus - coeff);
+        uint64_t dist_to_half = std::min(
+            (coeff >= half_mod) ? coeff - half_mod : half_mod - coeff,
+            (coeff >= half_mod) ? modulus - coeff + half_mod : modulus - half_mod + coeff
+        );
+        
+        result[i] = (dist_to_zero <= dist_to_half) ? 0 : half_mod;
+    }
+    
+    Logger::log("Rounded polynomial coefficients to binary signal");
+    return result;
+}
+
 Polynomial Polynomial::operator+(const Polynomial& other) const {
     if (ring_dim != other.ring_dim || modulus != other.modulus) {
         throw std::invalid_argument("Polynomials must be in the same ring");

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "polynomial.h"
+#include <polynomial.h>
 
 class PolynomialTest : public ::testing::Test {
 protected:
@@ -90,6 +90,41 @@ TEST_F(PolynomialTest, ScalarMultiplication) {
     EXPECT_EQ(g[1], 4);
     EXPECT_EQ(g[2], 6);
     EXPECT_EQ(g[3], 8);
+}
+
+TEST_F(PolynomialTest, PolySignal) {
+    // Using q = 17, so q/2 = 8
+    Polynomial f(4, q);
+    
+    // Test case 1: Values close to 0
+    std::vector<uint64_t> coeffs1 = {1, 2, 16, 15};  // 1,2 close to 0, 16,15 close to 0 (as -1,-2)
+    f.setCoefficients(coeffs1);
+    Polynomial signal1 = f.polySignal();
+    
+    EXPECT_EQ(signal1[0], 0);
+    EXPECT_EQ(signal1[1], 0);
+    EXPECT_EQ(signal1[2], 0);
+    EXPECT_EQ(signal1[3], 0);
+    
+    // Test case 2: Values close to q/2 (8)
+    std::vector<uint64_t> coeffs2 = {7, 8, 9, 10};  // All close to 8 (q/2)
+    f.setCoefficients(coeffs2);
+    Polynomial signal2 = f.polySignal();
+    
+    EXPECT_EQ(signal2[0], 8);
+    EXPECT_EQ(signal2[1], 8);
+    EXPECT_EQ(signal2[2], 8);
+    EXPECT_EQ(signal2[3], 8);
+    
+    // Test case 3: Mixed values
+    std::vector<uint64_t> coeffs3 = {2, 6, 8, 14};  // 2->0, 6->8, 8->8, 14->0
+    f.setCoefficients(coeffs3);
+    Polynomial signal3 = f.polySignal();
+    
+    EXPECT_EQ(signal3[0], 0);
+    EXPECT_EQ(signal3[1], 8);
+    EXPECT_EQ(signal3[2], 8);
+    EXPECT_EQ(signal3[3], 0);
 }
 
 TEST_F(PolynomialTest, MultiplicationWithReduction) {
