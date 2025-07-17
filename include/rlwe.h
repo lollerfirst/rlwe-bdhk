@@ -6,32 +6,24 @@
 #include <random>
 #include <cstdint>
 #include <memory>
-#include <array>
+#include <iomanip>
+#include <sstream>
+#include "logging.h"
 
 class RLWESignature {
 public:
-    // Initialize with ring dimension n (degree will be 2n) and modulus q
     RLWESignature(size_t n, uint64_t q);
-    
-    // Generate keys: (a, b = a*s + e) as public key, s as private key
     void generateKeys();
-    
-    // Sign a message
     std::pair<Polynomial, Polynomial> sign(const std::vector<uint8_t>& message);
-    
-    // Verify a signature
     bool verify(const std::vector<uint8_t>& message, 
                const std::pair<Polynomial, Polynomial>& signature);
 
-    // Get public key
     std::pair<Polynomial, Polynomial> getPublicKey() const {
         return std::make_pair(a, b);
     }
 
 private:
-    // Ring dimension (polynomial degree will be 2n)
     size_t ring_dim_n;
-    // Modulus
     uint64_t modulus;
     
     // Public key components
@@ -42,19 +34,58 @@ private:
     Polynomial s;  // Secret key
     
     // Helper functions
+    uint64_t getRandomUint64();
+    double getRandomDouble();
     Polynomial sampleUniform();
     Polynomial sampleGaussian(double stddev);
-    
-    // Convert message to polynomial
     Polynomial messageToPolynomial(const std::vector<uint8_t>& message);
-
-    // CSPRNG helper functions
-    uint64_t getRandomUint64();
-    double getRandomDouble(); // For Gaussian sampling
     
-    // Parameters for Gaussian distribution
-    static constexpr double GAUSSIAN_STDDEV = 3.0;
-    static constexpr double SIGNATURE_STDDEV = 3.0;
+    // Reduced standard deviation for better sensitivity
+    static constexpr double GAUSSIAN_STDDEV = 3.0;     // Small standard deviation for cleaner signals
+    
+    // Verification parameters
+    static constexpr double SMALL_THRESHOLD_DIVISOR = 64.0;  // For values near 0
+    static constexpr double LARGE_THRESHOLD_DIVISOR = 8.0;   // For values near q/2
+    static constexpr size_t MIN_DIFFERENT_COEFFS = 1;       // Even a single significant difference is meaningful
+
+    // Helper to calculate cyclic distance between two values
+    uint64_t getCyclicDistance(uint64_t a, uint64_t b) const {
+        uint64_t direct = (a >= b) ? a - b : b - a;
+        uint64_t wrap = modulus - direct;
+        return std::min(direct, wrap);
+    }
+
+    // Helper for verification
+    bool isValueSignificantlyDifferent(uint64_t value, uint64_t expected) const {
+        // For values that should be 0
+        if (expected == 0) {
+            uint64_t threshold = static_cast<uint64_t>(modulus / SMALL_THRESHOLD_DIVISOR);
+            uint64_t min_dist = std::min(value, modulus - value);
+            return min_dist > threshold;
+        }
+        // For values that should be q/2
+        else if (expected == modulus / 2) {
+            uint64_t threshold = static_cast<uint64_t>(modulus / LARGE_THRESHOLD_DIVISOR);
+            uint64_t dist = getCyclicDistance(value, expected);
+            
+            // For q/2 check, we want a larger threshold since these are our message bits
+            return dist > threshold;
+        }
+        return false;  // Should never happen in our case
+    }
+
+    // Logging helper
+    void logMessageBytes(const std::string& prefix, const std::vector<uint8_t>& message) {
+        std::stringstream ss;
+        ss << prefix << " bytes: [";
+        for (size_t i = 0; i < message.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') 
+               << static_cast<int>(message[i]);
+        }
+        ss << "]";
+        Logger::log(ss.str());
+    }
 };
 
 #endif // RLWE_H

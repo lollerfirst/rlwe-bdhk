@@ -4,17 +4,25 @@
 #include <vector>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
+#include "logging.h"
 
 class Polynomial {
 public:
     // Constructor for polynomial in Z[x]/(x^n + 1)
     Polynomial(size_t n, uint64_t q) : ring_dim(n), modulus(q) {
         coeffs.resize(ring_dim, 0);
+        Logger::log("Created zero polynomial of degree " + std::to_string(n-1) + 
+                   " with modulus " + std::to_string(q));
     }
 
     // Constructor from coefficient vector
     Polynomial(const std::vector<uint64_t>& coefficients, uint64_t q) 
-        : coeffs(coefficients), ring_dim(coefficients.size()), modulus(q) {}
+        : coeffs(coefficients), ring_dim(coefficients.size()), modulus(q) {
+        Logger::log("Created polynomial from coefficients: " + 
+                   Logger::vectorToString(coefficients) +
+                   " with modulus " + std::to_string(q));
+    }
 
     // Get coefficient at index
     uint64_t& operator[](size_t idx) {
@@ -53,6 +61,14 @@ public:
     // Get raw coefficients
     const std::vector<uint64_t>& getCoeffs() const {
         return coeffs;
+    }
+
+    // Convert to string for logging
+    std::string toString() const {
+        std::stringstream ss;
+        ss << "Polynomial(dim=" << ring_dim << ", q=" << modulus << "): ";
+        ss << Logger::vectorToString(coeffs);
+        return ss.str();
     }
 
 private:
