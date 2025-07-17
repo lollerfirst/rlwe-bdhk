@@ -1,14 +1,13 @@
 #ifndef RLWE_H
 #define RLWE_H
 
-#include "polynomial.h"
+#include <cmath>
+#include <polynomial.h>
 #include <vector>
-#include <random>
 #include <cstdint>
-#include <memory>
 #include <iomanip>
 #include <sstream>
-#include "logging.h"
+#include <logging.h>
 
 class RLWESignature {
 public:
@@ -44,8 +43,7 @@ private:
     static constexpr double GAUSSIAN_STDDEV = 3.0;     // Small standard deviation for cleaner signals
     
     // Verification parameters
-    static constexpr double SMALL_THRESHOLD_DIVISOR = 64.0;  // For values near 0
-    static constexpr double LARGE_THRESHOLD_DIVISOR = 8.0;   // For values near q/2
+    static constexpr double LARGE_THRESHOLD_DIVISOR = 4.0;   // For values near q/2
     static constexpr size_t MIN_DIFFERENT_COEFFS = 1;       // Even a single significant difference is meaningful
 
     // Helper to calculate cyclic distance between two values
@@ -57,21 +55,10 @@ private:
 
     // Helper for verification
     bool isValueSignificantlyDifferent(uint64_t value, uint64_t expected) const {
-        // For values that should be 0
-        if (expected == 0) {
-            uint64_t threshold = static_cast<uint64_t>(modulus / SMALL_THRESHOLD_DIVISOR);
-            uint64_t min_dist = std::min(value, modulus - value);
-            return min_dist > threshold;
-        }
-        // For values that should be q/2
-        else if (expected == modulus / 2) {
-            uint64_t threshold = static_cast<uint64_t>(modulus / LARGE_THRESHOLD_DIVISOR);
-            uint64_t dist = getCyclicDistance(value, expected);
-            
-            // For q/2 check, we want a larger threshold since these are our message bits
-            return dist > threshold;
-        }
-        return false;  // Should never happen in our case
+        uint64_t dist = getCyclicDistance(value, expected);
+        
+        // For q/2 check, we want a larger threshold since these are our message bits
+        return dist > floor(modulus / LARGE_THRESHOLD_DIVISOR);
     }
 
     // Logging helper

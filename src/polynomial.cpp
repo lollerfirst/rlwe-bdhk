@@ -1,6 +1,5 @@
-#include "polynomial.h"
+#include <polynomial.h>
 #include <stdexcept>
-#include <sstream>
 
 Polynomial Polynomial::operator+(const Polynomial& other) const {
     if (ring_dim != other.ring_dim || modulus != other.modulus) {

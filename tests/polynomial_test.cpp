@@ -8,6 +8,34 @@ protected:
     const uint64_t q = 17;
 };
 
+TEST_F(PolynomialTest, SetCoefficients) {
+    // Create zero polynomial
+    Polynomial f(4, q);
+    
+    // Set coefficients and verify they are properly set with modular reduction
+    std::vector<uint64_t> coeffs = {20, 21, 22, 23};  // These will be reduced mod 17
+    f.setCoefficients(coeffs);
+    
+    // Check coefficients are correctly reduced mod 17
+    EXPECT_EQ(f[0], 3);  // 20 mod 17 = 3
+    EXPECT_EQ(f[1], 4);  // 21 mod 17 = 4
+    EXPECT_EQ(f[2], 5);  // 22 mod 17 = 5
+    EXPECT_EQ(f[3], 6);  // 23 mod 17 = 6
+    
+    // Test setting with values already reduced
+    std::vector<uint64_t> coeffs2 = {1, 2, 3, 4};
+    f.setCoefficients(coeffs2);
+    
+    EXPECT_EQ(f[0], 1);
+    EXPECT_EQ(f[1], 2);
+    EXPECT_EQ(f[2], 3);
+    EXPECT_EQ(f[3], 4);
+    
+    // Test that invalid size throws exception
+    std::vector<uint64_t> invalid_coeffs = {1, 2, 3};  // Wrong size
+    EXPECT_THROW(f.setCoefficients(invalid_coeffs), std::invalid_argument);
+}
+
 TEST_F(PolynomialTest, Addition) {
     // Create polynomials: f = 1 + 2x + 3x^2 + 4x^3, g = 5 + 6x + 7x^2 + 8x^3
     Polynomial f({1, 2, 3, 4}, q);

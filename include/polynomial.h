@@ -63,6 +63,19 @@ public:
         return coeffs;
     }
 
+    // Set polynomial coefficients
+    void setCoefficients(const std::vector<uint64_t>& new_coeffs) {
+        if (new_coeffs.size() != ring_dim) {
+            throw std::invalid_argument("New coefficient vector size must match polynomial ring dimension");
+        }
+        coeffs = new_coeffs;
+        // Reduce each coefficient modulo q
+        for (auto& c : coeffs) {
+            c = mod(c, modulus);
+        }
+        Logger::log("Updated polynomial coefficients to: " + Logger::vectorToString(coeffs));
+    }
+
     // Convert to string for logging
     std::string toString() const {
         std::stringstream ss;

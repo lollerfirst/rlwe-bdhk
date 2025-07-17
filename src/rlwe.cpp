@@ -1,4 +1,4 @@
-#include "rlwe.h"
+#include <rlwe.h>
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
@@ -114,10 +114,10 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
     Logger::log("Expected: " + expected.toString());
     
     Logger::log("Using thresholds:");
-    uint64_t small_threshold = static_cast<uint64_t>(modulus / SMALL_THRESHOLD_DIVISOR);
+    //uint64_t small_threshold = static_cast<uint64_t>(modulus / SMALL_THRESHOLD_DIVISOR);
     uint64_t large_threshold = static_cast<uint64_t>(modulus / LARGE_THRESHOLD_DIVISOR);
-    Logger::log("  For values near 0: q/" + std::to_string(SMALL_THRESHOLD_DIVISOR) + 
-                " = " + std::to_string(small_threshold));
+    // Logger::log("  For values near 0: q/" + std::to_string(SMALL_THRESHOLD_DIVISOR) + 
+                //" = " + std::to_string(small_threshold));
     Logger::log("  For values near q/2: q/" + std::to_string(LARGE_THRESHOLD_DIVISOR) + 
                 " = " + std::to_string(large_threshold));
     
@@ -133,7 +133,7 @@ bool RLWESignature::verify(const std::vector<uint8_t>& message,
         std::string significance = expected_coeffs[i] == 0 ? 
             "near 0" : "near q/2";
         uint64_t dist = getCyclicDistance(result_coeffs[i], expected_coeffs[i]);
-        uint64_t used_threshold = expected_coeffs[i] == 0 ? small_threshold : large_threshold;
+        uint64_t used_threshold = large_threshold;
         
         Logger::log(std::string("Coefficient ") + std::to_string(i) + 
                    ": result=" + std::to_string(result_coeffs[i]) +
