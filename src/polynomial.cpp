@@ -1,5 +1,4 @@
 #include <polynomial.h>
-#include <algorithm>
 #include <stdexcept>
 
 Polynomial Polynomial::operator+(const Polynomial& other) const {

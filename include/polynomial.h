@@ -7,8 +7,8 @@
 
 class Polynomial {
 public:
-    // Constructor for polynomial in Z[x]/(x^(2n) + 1)
-    Polynomial(size_t n, uint64_t q) : ring_dim(2*n), modulus(q) {
+    // Constructor for polynomial in Z[x]/(x^n + 1)
+    Polynomial(size_t n, uint64_t q) : ring_dim(n), modulus(q) {
         coeffs.resize(ring_dim, 0);
     }
 
@@ -25,7 +25,7 @@ public:
         return coeffs[idx];
     }
 
-    // Get polynomial degree (2n)
+    // Get polynomial degree
     size_t degree() const {
         return ring_dim;
     }
@@ -44,7 +44,7 @@ public:
     // Negation modulo q
     Polynomial operator-() const;
 
-    // Multiplication modulo (x^(2n) + 1) and q
+    // Multiplication modulo (x^n + 1) and q
     Polynomial operator*(const Polynomial& other) const;
 
     // Scalar multiplication modulo q
@@ -57,7 +57,7 @@ public:
 
 private:
     std::vector<uint64_t> coeffs;  // Coefficients
-    size_t ring_dim;               // Polynomial ring dimension (2n)
+    size_t ring_dim;               // Polynomial ring dimension
     uint64_t modulus;              // Modulus q
 
     // Helper function for modular reduction
