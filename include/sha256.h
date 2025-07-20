@@ -5,6 +5,7 @@
 #include <string>
 #include <cstdint>
 #include <openssl/evp.h>
+#include <openssl/sha.h>  // Added for SHA256_DIGEST_LENGTH
 #include "polynomial.h"
 
 class SHA256 {
@@ -19,7 +20,7 @@ public:
     static std::vector<uint8_t> polyToHash(const Polynomial& poly);
     
     // Get the hash size in bytes (32 for SHA256)
-    static constexpr size_t hashSize() { return EVP_MAX_MD_SIZE; }
+    static constexpr size_t hashSize() { return SHA256_DIGEST_LENGTH; }
     
 private:
     // Helper to convert hash to byte vector
