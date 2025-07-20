@@ -7,7 +7,36 @@
 #include <random>
 #include <sha256.h>
 
+// Platform-specific includes for secure random
+#if defined(_WIN32)
+#include <windows.h>
+#include <bcrypt.h>
+#elif defined(__APPLE__)
+#include <Security/SecRandom.h>
+#endif
+
 static void getSecureRandomBytes(uint8_t* buffer, size_t length) {
+#if defined(_WIN32)
+    // Windows: Use BCrypt
+    BCRYPT_ALG_HANDLE hAlg = NULL;
+    NTSTATUS status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_RNG_ALGORITHM, NULL, 0);
+    if (!BCRYPT_SUCCESS(status)) {
+        throw std::runtime_error("Failed to open BCrypt algorithm provider");
+    }
+    
+    status = BCryptGenRandom(hAlg, buffer, static_cast<ULONG>(length), 0);
+    BCryptCloseAlgorithmProvider(hAlg, 0);
+    
+    if (!BCRYPT_SUCCESS(status)) {
+        throw std::runtime_error("Failed to generate random bytes using BCrypt");
+    }
+#elif defined(__APPLE__)
+    // macOS: Use SecRandomCopyBytes
+    if (SecRandomCopyBytes(kSecRandomDefault, length, buffer) != 0) {
+        throw std::runtime_error("Failed to generate random bytes using SecRandomCopyBytes");
+    }
+#else
+    // Linux and other Unix-like systems: Use /dev/urandom
     std::random_device rd("/dev/urandom");
     if (!rd.entropy()) {
         throw std::runtime_error("Failed to access secure random source");
@@ -18,6 +47,7 @@ static void getSecureRandomBytes(uint8_t* buffer, size_t length) {
         size_t remaining = std::min(sizeof(uint32_t), length - i);
         std::memcpy(buffer + i, &random, remaining);
     }
+#endif
 }
 
 uint64_t RLWESignature::getRandomUint64() {
@@ -40,6 +70,38 @@ double RLWESignature::getRandomDouble() {
     return radius * std::cos(theta);
 }
 
+// Helper function to check if a number is a power of 2
+static bool isPowerOfTwo(size_t n) {
+    return n != 0 && (n & (n - 1)) == 0;
+}
+
+// Helper function to validate power of 2 using compiler intrinsics
+static bool validatePowerOfTwo(size_t n) {
+    if (!isPowerOfTwo(n)) {
+        return false;
+    }
+
+#if defined(_MSC_VER) // Microsoft Visual C++
+    unsigned long index;
+    // BitScanReverse works on unsigned long
+    _BitScanReverse(&index, static_cast<unsigned long>(n));
+    return (static_cast<size_t>(1) << index) == n;
+#elif defined(__GNUC__) || defined(__clang__) // GCC or Clang
+    // __builtin_popcountll works with unsigned long long (64-bit)
+    unsigned long long n_ull = static_cast<unsigned long long>(n);
+    return __builtin_popcountll(n_ull) == 1;
+#else
+    // Generic implementation: count the number of set bits
+    size_t count = 0;
+    size_t temp = n;
+    while (temp > 0) {
+        count += temp & 1;
+        temp >>= 1;
+    }
+    return count == 1;
+#endif
+}
+
 RLWESignature::RLWESignature(size_t n, uint64_t q)
     : ring_dim_n(n),
       modulus(q),
@@ -47,6 +109,11 @@ RLWESignature::RLWESignature(size_t n, uint64_t q)
       b(n, q),
       s(n, q)
 {
+    // Validate that n is a power of 2 using the helper function
+    if (!validatePowerOfTwo(n)) {
+        throw std::invalid_argument("n must be a power of 2");
+    }
+
     Logger::log("Created RLWE instance with n=" + std::to_string(n) + 
                 ", q=" + std::to_string(q));
 }
